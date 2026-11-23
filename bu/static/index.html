@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f8fb">
+  <title>Pulsepoint — Health Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/demo.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#"><span class="brand-icon">✳</span><span>pulse<span class="brand-light">point</span></span></a>
+    <div class="nav-label">WORKSPACE</div>
+    <nav><a class="nav-item active" href="#"><span>◫</span> Overview</a><a class="nav-item" href="#readings"><span>⌁</span> Vitals history</a><a class="nav-item" href="#alerts"><span>♧</span> Alerts <i id="alert-badge" class="badge">0</i></a></nav>
+    <div class="sidebar-bottom"><div class="profile"><div class="avatar">AK</div><div><strong>Abhay Kumar</strong><small>Patient profile</small></div><span class="dots">···</span></div><div class="side-status"><span class="dot green"></span> Demo system online</div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div class="crumb">Workspace <span>/</span> <b>Overview</b></div><div class="top-actions"><span class="today" id="today"></span><button class="icon-btn" title="Notifications" aria-label="Notifications">♧<i id="bell-dot"></i></button><div class="avatar small">AK</div></div></header>
+    <section class="welcome"><div><div class="eyebrow"><span class="dot green"></span> PERSONAL HEALTH OVERVIEW</div><h1>Good day, Abhay <span>☀</span></h1><p>A clear view of your vitals, updated as new readings arrive.</p></div><div class="demo-toggle"><span class="demo-pill"><span class="dot amber"></span> DEMO DATA</span><label class="switch"><input type="checkbox" id="demo-toggle" checked><span></span></label><span id="demo-state">On</span></div></section>
+    <section class="demo-controls card"><div class="demo-copy"><span class="demo-spark">✦</span><div><b>Presentation demo</b><small>Load a sample scenario to show how the dashboard responds</small></div></div><div class="scenario-buttons"><button data-scenario="normal" class="scenario-btn normal-btn">Normal</button><button data-scenario="watch" class="scenario-btn watch-btn">Needs attention</button><button data-scenario="high" class="scenario-btn high-btn">High risk</button></div><span class="demo-hint" id="demo-hint">All values are simulated</span></section>
+    <section class="stats" id="readings">
+      <article class="card metric"><div class="metric-top"><span>Heart rate</span><span class="metric-icon rose">♡</span></div><div class="metric-value"><strong id="hr">—</strong><span>bpm</span></div><div class="metric-bottom"><span id="hr-state" class="state">Loading</span><span class="spark"><svg viewBox="0 0 90 28" preserveAspectRatio="none"><path d="M1 19 L12 17 L22 20 L32 12 L42 15 L52 8 L63 15 L72 9 L89 5"/></svg></span></div><div class="metric-line rose-line"></div></article>
+      <article class="card metric"><div class="metric-top"><span>Blood oxygen</span><span class="metric-icon blue">◉</span></div><div class="metric-value"><strong id="spo2">—</strong><span>% SpO₂</span></div><div class="metric-bottom"><span id="spo2-state" class="state">Loading</span><span class="spark blue-spark"><svg viewBox="0 0 90 28" preserveAspectRatio="none"><path d="M1 18 L12 17 L22 18 L32 12 L42 15 L52 9 L63 12 L72 7 L89 9"/></svg></span></div><div class="metric-line blue-line"></div></article>
+      <article class="card metric"><div class="metric-top"><span>Body temperature</span><span class="metric-icon orange">♨</span></div><div class="metric-value"><strong id="temp">—</strong><span>°C</span></div><div class="metric-bottom"><span id="temp-state" class="state">Loading</span><span class="spark orange-spark"><svg viewBox="0 0 90 28" preserveAspectRatio="none"><path d="M1 18 L12 20 L22 15 L32 17 L42 11 L52 14 L63 9 L72 12 L89 5"/></svg></span></div><div class="metric-line orange-line"></div></article>
+      <article class="card risk-card" id="risk-card"><div class="metric-top"><span>Current risk level</span><span class="risk-shield">✳</span></div><div class="risk-value"><strong id="risk-level">—</strong><span class="risk-score" id="risk-score">— / 100</span></div><div class="risk-meter"><i id="risk-meter"></i></div><div class="risk-note" id="risk-note">Calculating from latest reading…</div></article>
+    </section>
+    <section class="content-grid"><article class="card chart-card"><div class="section-head"><div><h2>Vital trends</h2><p>Recent readings across the day</p></div><div class="legend"><span><i class="legend-dot rose-bg"></i>Heart rate</span><span><i class="legend-dot blue-bg"></i>SpO₂</span></div></div><div class="chart-wrap"><canvas id="trend-chart" aria-label="Vital sign trends"></canvas></div><div class="chart-foot"><span><i class="legend-dot rose-bg"></i> Heart rate (bpm)</span><span><i class="legend-dot blue-bg"></i> Blood oxygen (%)</span><span id="last-updated">Waiting for data</span></div></article>
+      <article class="card status-card"><div class="section-head"><div><h2>System status</h2><p>Monitoring pipeline</p></div><span class="live-chip"><i></i> LIVE</span></div><div class="pipeline"><div class="pipeline-row"><span class="pipe-icon mint">⌁</span><div><b>Vital readings</b><small id="source-status">Demo stream active</small></div><span class="check">✓</span></div><div class="pipe-line"></div><div class="pipeline-row"><span class="pipe-icon lilac">◈</span><div><b>Risk assessment</b><small>Prototype threshold rules</small></div><span class="check">✓</span></div><div class="pipe-line"></div><div class="pipeline-row"><span class="pipe-icon peach">♧</span><div><b>Alert monitoring</b><small id="alert-status">No active alerts</small></div><span class="check">✓</span></div></div><div class="prototype-note"><span>ⓘ</span><span>Risk scoring is a software prototype. It is not a diagnosis or a substitute for medical care.</span></div></article></section>
+    <section class="card alerts-card" id="alerts"><div class="section-head"><div><h2>Recent alerts</h2><p>Items that may need your attention</p></div><button id="clear-alerts" class="text-btn">Clear history</button></div><div id="alert-list" class="alert-list"><div class="empty-alert"><span>✓</span><b>All clear</b><small>No threshold alerts in recent readings.</small></div></div></section>
+    <footer>Pulsepoint Health Monitor <span>•</span> Prototype build <span class="footer-right">Data stored locally on this server</span></footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
