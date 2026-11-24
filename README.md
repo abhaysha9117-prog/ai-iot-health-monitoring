@@ -23,10 +23,10 @@ In accordance with faculty review guidelines, the current phase focuses on the *
 ## 2. Team & Project Guide
 
 * **Team Members:**
-  * Amrita
+  * Amrita Kumari
   * Abhijeet Kumar Singh
-  * Abhay Kumar
-  * Anand
+  * Abhay Kumar Sharma
+  * Anand Kumar
 * **Project Guide:** Mr. Asis Kumar Bhunia, Dept. of CSE (Data Science), Haldia Institute of Technology
 
 ---
