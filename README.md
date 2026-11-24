@@ -20,15 +20,13 @@ In accordance with faculty review guidelines, the current phase focuses on the *
 
 ---
 
-## 2. Team & Role Allocation
+## 2. Team & Project Guide
 
-| Member | Role | Primary Responsibilities |
-| :--- | :--- | :--- |
-| **Amrita** | Group Leader & UI/Dashboard Lead | Frontend architecture (`index.html`, `styles.css`, `app.js`), UX workflows, and presentation coordination |
-| **Abhijeet Kumar Singh** | Machine Learning & Prediction Lead | Dataset auditing, EDA, preprocessing, model training (`train_model.py`), evaluation, and ML backend integration |
-| **Abhay Kumar** | Hardware & Embedded Systems Lead | Sensor interfacing (MAX30102, DS18B20) and microcontroller prototyping *(scheduled post-November)* |
-| **Anand** | IoT & Cloud Integration Lead | Telemetry protocols, device-to-server communication, and data pipeline architecture |
-
+* **Team Members:**
+  * Amrita
+  * Abhijeet Kumar Singh
+  * Abhay Kumar
+  * Anand
 * **Project Guide:** Mr. Asis Kumar Bhunia, Dept. of CSE (Data Science), Haldia Institute of Technology
 
 ---
@@ -41,10 +39,4 @@ ai-iot-health-monitoring-main/
     ├── server.py                                           # Python HTTP server, SQLite API, and risk scoring engine
     ├── train_model.py                                      # ML preprocessing, model comparison, and artifact export
     ├── risk_model.joblib                                   # Serialized trained Random Forest model (generated)
-    ├── Synthetic_patient-HealthCare-Monitoring_dataset.csv # Benchmark dataset (60,000 records)
-    ├── health_data.sqlite3                                 # Local SQLite database for vital readings
-    └── static/
-        ├── index.html                                      # Main dashboard layout
-        ├── app.js                                          # Frontend rendering, charts, and scenario controls
-        ├── styles.css                                      # Core dashboard styling
-        └── demo.css                                        # Demo controls and status indicator styling
+    ├── Synthetic_patient-HealthCare-Monitoring_dataset.csv # Benchmark dataset (60,000 records
