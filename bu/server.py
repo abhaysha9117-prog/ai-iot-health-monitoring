@@ -1,8 +1,4 @@
-"""Small, dependency-free health monitoring demo server.
-
-This prototype is for software development and demonstration only. It is not
-intended for diagnosis, treatment, or emergency response.
-"""
+"""Health monitoring prototype server with per-patient SQLite storage & Random Forest ML."""
 from __future__ import annotations
 
 import json
@@ -12,37 +8,43 @@ import threading
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
+
+import joblib
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("HEALTH_DB", ROOT / "health_data.sqlite3"))
+MODEL_PATH = ROOT / "risk_model.joblib"
 LOCK = threading.Lock()
+
+ML_MODEL = joblib.load(MODEL_PATH) if MODEL_PATH.exists() else None
+FEATURE_COLS = ["Heart Rate (bpm)", "SpO2 Level (%)", "Body Temperature (°C)"]
 
 
 def risk_for(hr: float, spo2: float, temp: float) -> dict:
-    """Explainable prototype scoring; thresholds require clinical review."""
-    score, reasons = 0, []
-    if hr < 50 or hr > 120:
-        score += 38
-        reasons.append("Heart rate outside the prototype range")
-    elif hr < 60 or hr > 100:
-        score += 16
-        reasons.append("Heart rate outside the reference range")
-    if spo2 < 90:
-        score += 48
-        reasons.append("SpO₂ below 90%")
-    elif spo2 < 95:
-        score += 22
-        reasons.append("SpO₂ below 95%")
-    if temp >= 39 or temp < 35:
-        score += 38
-        reasons.append("Temperature outside the prototype range")
-    elif temp >= 38 or temp < 36:
-        score += 18
-        reasons.append("Temperature outside the reference range")
-    score = min(score, 100)
-    level = "High" if score >= 45 else "Moderate" if score >= 18 else "Low"
-    return {"score": score, "level": level, "reasons": reasons or ["No prototype threshold crossed"]}
+    """Predict risk level and confidence score using the trained Random Forest model."""
+    reasons = []
+    if hr < 60 or hr > 100:
+        reasons.append(f"Heart rate abnormal ({hr:.0f} bpm)")
+    if spo2 < 95:
+        reasons.append(f"SpO₂ below reference ({spo2:.1f}%)")
+    if temp >= 37.6 or temp < 35.5:
+        reasons.append(f"Body temperature elevated/low ({temp:.1f}°C)")
+
+    if ML_MODEL is not None:
+        sample = pd.DataFrame([[hr, spo2, temp]], columns=FEATURE_COLS)
+        pred_level = str(ML_MODEL.predict(sample)[0])
+        probs = dict(zip(ML_MODEL.classes_, ML_MODEL.predict_proba(sample)[0]))
+        score = int(round(probs.get("Moderate", 0.0) * 50 + probs.get("High", 0.0) * 100))
+        confidence = int(round(probs.get(pred_level, 1.0) * 100))
+        summary = reasons if reasons else ["All 3 vitals within normal range"]
+        summary.append(f"Random Forest ML ({confidence}% confidence)")
+        return {"score": score, "level": pred_level, "reasons": summary}
+
+    score = min(len(reasons) * 40, 100)
+    level = "High" if len(reasons) >= 2 else "Moderate" if len(reasons) == 1 else "Low"
+    return {"score": score, "level": level, "reasons": reasons or ["Fallback threshold check"]}
 
 
 def connect():
@@ -51,21 +53,43 @@ def connect():
     return db
 
 
+def seed_patient(db, patient_id: str, base_hr: float = 74, base_spo2: float = 98.0, base_temp: float = 36.6):
+    """Create initial demo history for a patient if they have no readings yet."""
+    count = db.execute("SELECT COUNT(*) FROM readings WHERE patient_id = ?", (patient_id,)).fetchone()[0]
+    if count > 0:
+        return
+    now = datetime.now(timezone.utc)
+    for i in range(16):
+        t = now - timedelta(minutes=(15 - i) * 5)
+        hr = base_hr + (i % 5) * 2
+        spo2 = min(100.0, round(base_spo2 + (i % 3) * 0.2, 1))
+        temp = round(base_temp + (i % 4) * 0.1, 1)
+        db.execute(
+            "INSERT INTO readings(patient_id,timestamp,heart_rate,spo2,temperature,source) VALUES(?,?,?,?,?,?)",
+            (patient_id, t.isoformat(), hr, spo2, temp, "demo"),
+        )
+
+
 def init_db():
     with connect() as db:
         db.execute("""CREATE TABLE IF NOT EXISTS readings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL,
-            heart_rate REAL NOT NULL, spo2 REAL NOT NULL, temperature REAL NOT NULL,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id TEXT NOT NULL DEFAULT 'PT-101',
+            timestamp TEXT NOT NULL,
+            heart_rate REAL NOT NULL,
+            spo2 REAL NOT NULL,
+            temperature REAL NOT NULL,
             source TEXT NOT NULL DEFAULT 'device')""")
-        if db.execute("SELECT COUNT(*) FROM readings").fetchone()[0] == 0:
-            now = datetime.now(timezone.utc)
-            for i in range(24):
-                t = now - timedelta(minutes=(23-i)*5)
-                hr = 72 + (i % 7) * 2 + (3 if i % 5 == 0 else 0)
-                spo2 = 97 + (i % 3)
-                temp = 36.5 + (i % 4) * .1
-                db.execute("INSERT INTO readings(timestamp,heart_rate,spo2,temperature,source) VALUES(?,?,?,?,?)",
-                           (t.isoformat(), hr, spo2, temp, "demo"))
+        # Migrate older database table if patient_id column doesn't exist yet
+        cols = [r["name"] for r in db.execute("PRAGMA table_info(readings)").fetchall()]
+        if "patient_id" not in cols:
+            db.execute("ALTER TABLE readings ADD COLUMN patient_id TEXT NOT NULL DEFAULT 'PT-101'")
+        seed_patient(db, "PT-101", 72, 98.0, 36.6)
+        seed_patient(db, "PT-102", 78, 97.5, 36.8)
+        seed_patient(db, "PT-103", 84, 96.8, 37.0)
+        seed_patient(db, "PT-104", 70, 98.5, 36.5)
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print("%s - %s" % (self.address_string(), fmt % args))
@@ -85,20 +109,35 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"ok": True})
 
     def do_GET(self):
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
+        qs = parse_qs(parsed.query)
         if path == "/api/health":
-            return self.send_json({"status": "ok", "mode": "prototype", "risk_model": "transparent prototype rules"})
+            return self.send_json({
+                "status": "ok",
+                "mode": "prototype",
+                "risk_model": "RandomForestClassifier (risk_model.joblib)" if ML_MODEL else "fallback rules",
+            })
         if path == "/api/readings":
+            patient_id = (qs.get("patient_id", ["PT-101"])[0] or "PT-101").strip().upper()
             try:
-                limit = min(500, max(1, int(urlparse(self.path).query.split("limit=")[-1].split("&")[0]))) if "limit=" in self.path else 100
+                limit = min(500, max(1, int(qs.get("limit", ["100"])[0])))
             except ValueError:
                 limit = 100
-            with connect() as db:
-                rows = db.execute("SELECT * FROM readings ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+            with LOCK, connect() as db:
+                seed_patient(db, patient_id)
+                rows = db.execute(
+                    "SELECT * FROM readings WHERE patient_id = ? ORDER BY id DESC LIMIT ?",
+                    (patient_id, limit),
+                ).fetchall()
             values = [dict(r) for r in reversed(rows)]
             latest = values[-1] if values else None
-            result = {"readings": values, "latest": latest,
-                      "risk": risk_for(latest["heart_rate"], latest["spo2"], latest["temperature"]) if latest else None}
+            result = {
+                "patient_id": patient_id,
+                "readings": values,
+                "latest": latest,
+                "risk": risk_for(latest["heart_rate"], latest["spo2"], latest["temperature"]) if latest else None,
+            }
             return self.send_json(result)
         return self.serve_static(path)
 
@@ -111,6 +150,7 @@ class Handler(BaseHTTPRequestHandler):
             if size > 8192:
                 return self.send_json({"error": "Request too large"}, 413)
             payload = json.loads(self.rfile.read(size))
+            patient_id = str(payload.get("patient_id") or "PT-101").strip().upper()
             hr, spo2, temp = (float(payload[k]) for k in ("heart_rate", "spo2", "temperature"))
             if not (20 <= hr <= 250 and 0 <= spo2 <= 100 and 20 <= temp <= 50):
                 raise ValueError("Values outside accepted sensor bounds")
@@ -118,10 +158,19 @@ class Handler(BaseHTTPRequestHandler):
             datetime.fromisoformat(stamp.replace("Z", "+00:00"))
             source = "demo" if payload.get("source") == "demo" else "device"
             with LOCK, connect() as db:
-                cur = db.execute("INSERT INTO readings(timestamp,heart_rate,spo2,temperature,source) VALUES(?,?,?,?,?)",
-                                 (stamp, hr, spo2, temp, source))
-                reading = {"id": cur.lastrowid, "timestamp": stamp, "heart_rate": hr,
-                           "spo2": spo2, "temperature": temp, "source": source}
+                cur = db.execute(
+                    "INSERT INTO readings(patient_id,timestamp,heart_rate,spo2,temperature,source) VALUES(?,?,?,?,?,?)",
+                    (patient_id, stamp, hr, spo2, temp, source),
+                )
+                reading = {
+                    "id": cur.lastrowid,
+                    "patient_id": patient_id,
+                    "timestamp": stamp,
+                    "heart_rate": hr,
+                    "spo2": spo2,
+                    "temperature": temp,
+                    "source": source,
+                }
             risk = risk_for(hr, spo2, temp)
             return self.send_json({"reading": reading, "risk": risk}, 201)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
@@ -132,7 +181,11 @@ class Handler(BaseHTTPRequestHandler):
         target = (ROOT / "static" / name).resolve()
         if ROOT.joinpath("static").resolve() not in target.parents or not target.is_file():
             return self.send_json({"error": "Not found"}, 404)
-        content_type = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "application/javascript; charset=utf-8"}.get(target.suffix, "application/octet-stream")
+        content_type = {
+            ".html": "text/html; charset=utf-8",
+            ".css": "text/css; charset=utf-8",
+            ".js": "application/javascript; charset=utf-8",
+        }.get(target.suffix, "application/octet-stream")
         data = target.read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", content_type)
@@ -145,5 +198,6 @@ if __name__ == "__main__":
     init_db()
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8000"))
+    print(f"ML Model loaded: {ML_MODEL is not None}")
     print(f"Health monitoring prototype at http://{host}:{port}")
     ThreadingHTTPServer((host, port), Handler).serve_forever()

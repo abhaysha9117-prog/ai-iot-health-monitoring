@@ -1,0 +1,5 @@
+﻿.venv/
+bu/.venv/
+__pycache__/
+*.csv
+*.sqlite3
