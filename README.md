@@ -1,6 +1,6 @@
 # AI-Integrated IoT Health Monitoring System with Predictive Analytics (Pulsepoint)
 
-An academic software and machine learning prototype developed for the **B.Tech Final Year Project (Semester VII)** in the **Department of Computer Science & Engineering (Data Science)** at **Haldia Institute of Technology**.
+An academic software and machine learning prototype developed for the **B.Tech Final Year Project ** in the **Department of Computer Science & Engineering (Data Science)** at **Haldia Institute of Technology**.
 
 > **Academic & Clinical Disclaimer:** This application is a software and machine learning prototype built for educational demonstration. Risk classifications, simulated vitals, and anomaly alerts are **not** medical diagnoses and must not be used for clinical decision-making.
 
